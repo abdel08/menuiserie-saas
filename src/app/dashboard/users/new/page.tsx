@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type Entreprise = {
+  id: string;
+  nom: string;
+};
+
 export default function CreateUserPage() {
   const [form, setForm] = useState({
     email: '',
@@ -12,48 +17,67 @@ export default function CreateUserPage() {
     entreprise_id: ''
   });
 
-  const [entreprises, setEntreprises] = useState<{ id: string; nom: string }[]>([]);
-  const router = useRouter();
+  const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  // 🧠 Charger les entreprises depuis Supabase
+  // Charger la liste des entreprises depuis Supabase via /api/entreprises
   useEffect(() => {
     async function fetchEntreprises() {
-      const res = await fetch('/api/entreprises');
-      const data = await res.json();
-      setEntreprises(data);
+      try {
+        const res = await fetch('/api/entreprises');
+        if (!res.ok) throw new Error('Erreur lors du chargement des entreprises');
+        const data = await res.json();
+        setEntreprises(data);
+      } catch (err) {
+        console.error(err);
+        setError("Impossible de charger les entreprises.");
+      }
     }
+
     fetchEntreprises();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
-    const res = await fetch('https://tgcbrdpxovdcomcfsryd.functions.supabase.co/create-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
+    try {
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
 
-    const result = await res.json();
-    setLoading(false);
+      const result = await res.json();
+      setLoading(false);
 
-    if (res.ok) {
-      alert('✅ Utilisateur créé avec succès');
-      router.push('/dashboard');
-    } else {
-      alert('❌ Erreur : ' + result.error);
+      if (res.ok) {
+        alert('✅ Utilisateur créé avec succès');
+        router.push('/dashboard');
+      } else {
+        setError(result.error || 'Erreur inconnue');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setError('❌ Échec de la requête : ' + err.message);
     }
   };
 
   return (
     <div className="max-w-xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">➕ Créer un utilisateur</h1>
+
+      {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
