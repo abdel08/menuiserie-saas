@@ -1,50 +1,48 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../../../../lib/supabase'
+import { Event } from '../../../../types'
 
 export function useInterventions() {
-  const [events, setEvents] = useState<any[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
-  const [filters, setFilters] = useState({ type: 'all', technicien: 'all' })
+  const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [selected, setSelected] = useState<Event | null>(null)
+  const [filters, setFilters] = useState<{ type: string | null }>({ type: null })
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    const fetchEvents = async () => {
+      setLoading(true)
 
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('entreprise_id')
-        .eq('id', user.id)
-        .single()
-
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('interventions')
         .select(`
-          id, date, tranche_horaire, type,
-          client:client_id(nom),
-          technicien:technicien_id(username)
+          id,
+          date,
+          tranche_horaire,
+          type,
+          client:client_id ( nom ),
+          technicien:technicien_id ( username )
         `)
-        .eq('entreprise_id', userRow?.entreprise_id)
 
-      const filtered = (data || []).filter((i) =>
-        (filters.type === 'all' || i.type === filters.type) &&
-        (filters.technicien === 'all' || i.technicien?.username === filters.technicien)
-      )
+      if (error) {
+        console.error('Erreur récupération interventions', error)
+        setLoading(false)
+        return
+      }
 
-      const mapped = filtered.map((i: any) => ({
-        id: i.id,
-        title: `${i.type === 'maintenance' ? '🧰' : '🛠'} ${i.client?.nom || ''}`,
-        start: `${i.date}T${i.tranche_horaire === 'apres-midi' ? '14:00:00' : '09:00:00'}`,
-        backgroundColor: i.type === 'maintenance' ? '#facc15' : '#ef4444',
-        borderColor: '#111827',
-        textColor: '#fff'
+      const formattedEvents: Event[] = (data || []).map((item: any) => ({
+        id: item.id,
+        title: `${item.type} - ${item.client?.[0]?.nom || 'Client ?'} (${item.technicien?.[0]?.username || 'Tech ?'})`,
+        start: new Date(`${item.date}T${item.tranche_horaire === 'matin' ? '08:00:00' : '14:00:00'}`),
+        end: new Date(`${item.date}T${item.tranche_horaire === 'matin' ? '12:00:00' : '18:00:00'}`),
+        color: item.type === 'maintenance' ? '#10b981' : '#ef4444'
       }))
 
-      setEvents(mapped)
+      setEvents(formattedEvents)
+      setLoading(false)
     }
 
-    fetchData()
-  }, [filters])
+    fetchEvents()
+  }, [])
 
-  return { events, selected, setSelected, filters, setFilters }
+  return { events, loading, selected, setSelected, filters, setFilters }
 }

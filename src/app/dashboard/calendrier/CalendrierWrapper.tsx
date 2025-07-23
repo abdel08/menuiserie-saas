@@ -1,37 +1,75 @@
 'use client'
 
-import { useState } from 'react'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import { useInterventions } from './useInterventions'
-import InterventionDrawer from './InterventionDrawer'
-import FiltersBar from './FiltersBar'
+import { useEffect, useState } from 'react'
+import { Drawer } from '@/components/ui/drawer'
+import { supabase } from '../../../../lib/supabase'
 
-export default function CalendrierWrapper() {
-  const { events, selected, setSelected, filters, setFilters } = useInterventions()
+type Intervention = {
+  id: string
+  type: string
+  date: string
+  tranche_horaire: string
+  client: { nom: string }
+  technicien: { username: string }
+  statut: string
+}
+
+type Props = {
+  selectedId: string | null
+  onClose: () => void
+}
+
+export default function InterventionDrawer({ selectedId, onClose }: Props) {
+  const [intervention, setIntervention] = useState<Intervention | null>(null)
+
+  useEffect(() => {
+    if (!selectedId) return
+
+    const fetchIntervention = async () => {
+      const { data, error } = await supabase
+        .from('interventions')
+        .select(
+          `
+          id,
+          type,
+          date,
+          tranche_horaire,
+          statut,
+          client:client_id ( nom ),
+          technicien:technicien_id ( username )
+        `
+        )
+        .eq('id', selectedId)
+        .single()
+
+      if (error) {
+        console.error('Erreur chargement intervention :', error)
+        return
+      }
+
+      setIntervention(data)
+    }
+
+    fetchIntervention()
+  }, [selectedId])
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-md">
-      <FiltersBar filters={filters} setFilters={setFilters} />
-
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek'
-        }}
-        height="auto"
-        events={events}
-        eventClick={({ event }) => {
-          setSelected(event.id)
-        }}
-      />
-
-      <InterventionDrawer selectedId={selected} onClose={() => setSelected(null)} />
-    </div>
+    <Drawer open={!!selectedId} onClose={onClose}>
+      <div className="p-4 space-y-3">
+        {intervention ? (
+          <>
+            <h2 className="text-xl font-bold">
+              {intervention.type === 'maintenance' ? '🧰 Maintenance' : '🛠 Dépannage'}
+            </h2>
+            <p>📅 {intervention.date} — {intervention.tranche_horaire}</p>
+            <p>👤 Client : {intervention.client?.nom}</p>
+            <p>🧑‍🔧 Technicien : {intervention.technicien?.username}</p>
+            <p>📌 Statut : {intervention.statut}</p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">Chargement...</p>
+        )}
+      </div>
+    </Drawer>
   )
 }
