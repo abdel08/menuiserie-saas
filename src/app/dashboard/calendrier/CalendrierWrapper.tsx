@@ -1,35 +1,29 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Drawer } from '@/components/ui/drawer'
-import { supabase } from '../../../../lib/supabase'
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import { useEffect, useState } from "react";
+import { supabase } from "../../../../lib/supabase";
+import InterventionDrawer from "./InterventionDrawer";
 
-type Intervention = {
-  id: string
-  type: string
-  date: string
-  tranche_horaire: string
-  client: { nom: string }[]
-  technicien: { username: string }[]
-  statut: string
-}
+type Event = {
+  id: string;
+  title: string;
+  start: string;
+  backgroundColor?: string;
+};
 
-type Props = {
-  selectedId: string | null
-  onClose: () => void
-}
-
-export default function InterventionDrawer({ selectedId, onClose }: Props) {
-  const [intervention, setIntervention] = useState<Intervention | null>(null)
+export default function CalendrierWrapper() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!selectedId) return
-
-    const fetchIntervention = async () => {
+    const loadEvents = async () => {
       const { data, error } = await supabase
-        .from('interventions')
-        .select(
-          `
+        .from("interventions")
+        .select(`
           id,
           type,
           date,
@@ -37,39 +31,61 @@ export default function InterventionDrawer({ selectedId, onClose }: Props) {
           statut,
           client:client_id ( nom ),
           technicien:technicien_id ( username )
-        `
-        )
-        .eq('id', selectedId)
-        .single()
+        `);
 
       if (error) {
-        console.error('Erreur chargement intervention :', error)
-        return
+        console.error("Erreur chargement interventions :", error);
+        return;
       }
 
-      setIntervention(data)
-    }
+      const mapped = data.map((item: any) => ({
+        id: item.id,
+        title: `${item.type} - ${item.technicien?.[0]?.username || "?"} → ${item.client?.[0]?.nom || "?"}`,
+        start: item.date,
+        backgroundColor:
+          item.statut === "terminée"
+            ? "#22c55e" // vert
+            : item.statut === "en attente"
+            ? "#facc15" // jaune
+            : "#ef4444", // rouge
+      }));
 
-    fetchIntervention()
-  }, [selectedId])
+      setEvents(mapped);
+    };
+
+    loadEvents();
+  }, []);
+
+  const handleDateChange = async (info: any) => {
+    const { event } = info;
+    await supabase
+      .from("interventions")
+      .update({ date: event.startStr })
+      .eq("id", event.id);
+  };
 
   return (
-    <Drawer open={!!selectedId} onClose={onClose}>
-      <div className="p-4 space-y-3">
-        {intervention ? (
-          <>
-            <h2 className="text-xl font-bold">
-              {intervention.type === 'maintenance' ? '🧰 Maintenance' : '🛠 Dépannage'}
-            </h2>
-            <p>📅 {intervention.date} — {intervention.tranche_horaire}</p>
-            <p>👤 Client : {intervention.client?.[0]?.nom ?? '—'}</p>
-            <p>🧑‍🔧 Technicien : {intervention.technicien?.[0]?.username ?? '—'}</p>
-            <p>📌 Statut : {intervention.statut}</p>
-          </>
-        ) : (
-          <p className="text-sm text-gray-500">Chargement...</p>
-        )}
-      </div>
-    </Drawer>
-  )
+    <>
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        events={events}
+        height="auto"
+        editable={true}
+        eventDrop={handleDateChange}
+        eventClick={(info) => setSelectedId(info.event.id)}
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay",
+        }}
+      />
+      {selectedId && (
+        <InterventionDrawer
+          selectedId={selectedId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+    </>
+  );
 }
