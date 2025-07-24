@@ -9,8 +9,8 @@ type Intervention = {
   type: string
   date: string
   tranche_horaire: string
-  client: { nom: string }
-  technicien: { username: string }
+  client: { nom: string }[]
+  technicien: { username: string }[]
   statut: string
 }
 
@@ -62,8 +62,8 @@ export default function InterventionDrawer({ selectedId, onClose }: Props) {
               {intervention.type === 'maintenance' ? '🧰 Maintenance' : '🛠 Dépannage'}
             </h2>
             <p>📅 {intervention.date} — {intervention.tranche_horaire}</p>
-            <p>👤 Client : {intervention.client?.nom}</p>
-            <p>🧑‍🔧 Technicien : {intervention.technicien?.username}</p>
+            <p>👤 Client : {intervention.client?.[0]?.nom ?? '—'}</p>
+            <p>🧑‍🔧 Technicien : {intervention.technicien?.[0]?.username ?? '—'}</p>
             <p>📌 Statut : {intervention.statut}</p>
           </>
         ) : (

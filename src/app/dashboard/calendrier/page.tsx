@@ -1,12 +1,12 @@
 'use client'
 
-import CalendrierWrapper from './CalendrierWrapper'
+import CalendrierWrapper from '..//components/dashboard/CalendrierWrapper'
 
-export default function PageCalendrier() {
+export default function Page() {
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">📅 Planning des interventions</h1>
-      <CalendrierWrapper />
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Calendrier</h1>
+      <CalendrierWrapper /> {/* ✅ Pas de props à passer */}
     </div>
   )
 }
