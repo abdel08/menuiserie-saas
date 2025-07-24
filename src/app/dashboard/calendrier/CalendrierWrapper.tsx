@@ -7,17 +7,31 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabase";
 import InterventionDrawer from "./InterventionDrawer";
+import FiltersBar from "./FiltersBar";
+
+type Filters = {
+  type: string;
+  technicien: string;
+};
 
 type Event = {
   id: string;
   title: string;
   start: string;
   backgroundColor?: string;
+  type: string;
+  technicien_id: string;
 };
 
 export default function CalendrierWrapper() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [rawEvents, setRawEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const [filters, setFilters] = useState<Filters>({
+    type: "",
+    technicien: "",
+  });
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -29,6 +43,7 @@ export default function CalendrierWrapper() {
           date,
           tranche_horaire,
           statut,
+          technicien_id,
           client:client_id ( nom ),
           technicien:technicien_id ( username )
         `);
@@ -44,17 +59,29 @@ export default function CalendrierWrapper() {
         start: item.date,
         backgroundColor:
           item.statut === "terminée"
-            ? "#22c55e" // vert
+            ? "#22c55e"
             : item.statut === "en attente"
-            ? "#facc15" // jaune
-            : "#ef4444", // rouge
+            ? "#facc15"
+            : "#ef4444",
+        type: item.type,
+        technicien_id: item.technicien_id,
       }));
 
-      setEvents(mapped);
+      setRawEvents(mapped);
     };
 
     loadEvents();
   }, []);
+
+  useEffect(() => {
+    const filtered = rawEvents.filter((item) => {
+      const matchType = filters.type === "" || item.type === filters.type;
+      const matchTechnicien = filters.technicien === "" || item.technicien_id === filters.technicien;
+      return matchType && matchTechnicien;
+    });
+
+    setFilteredEvents(filtered);
+  }, [rawEvents, filters]);
 
   const handleDateChange = async (info: any) => {
     const { event } = info;
@@ -66,10 +93,12 @@ export default function CalendrierWrapper() {
 
   return (
     <>
+      <FiltersBar filters={filters} setFilters={setFilters} />
+
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
-        events={events}
+        events={filteredEvents}
         height="auto"
         editable={true}
         eventDrop={handleDateChange}
@@ -80,6 +109,7 @@ export default function CalendrierWrapper() {
           right: "dayGridMonth,timeGridWeek,timeGridDay",
         }}
       />
+
       {selectedId && (
         <InterventionDrawer
           selectedId={selectedId}
