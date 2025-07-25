@@ -3,67 +3,88 @@
 import { useEffect, useState } from 'react'
 import { addDays, format, startOfWeek } from 'date-fns'
 import clsx from 'clsx'
+import { useInterventions } from './useInterventions'
 
-// 🗓️ Jours en français
 const joursFrancais = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+const tranches = ['matin', 'après-midi']
+const heuresAffichage = ['08:00', '14:00']
 
-// 🕐 Créneaux horaires
-const heures = [
-  '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00',
-]
-
-export default function PlanningSemaine() {
+export default function CalendrierAdminPro() {
   const [jours, setJours] = useState<string[]>([])
+  const [dates, setDates] = useState<Date[]>([])
+  const { events } = useInterventions()
+  const interventions = events ?? []
 
   useEffect(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 })
     const joursFormatted = Array.from({ length: 7 }, (_, i) => {
       const date = addDays(start, i)
-      const jour = joursFrancais[date.getDay() === 0 ? 6 : date.getDay() - 1]
-      const dateStr = format(date, 'dd/MM')
-      return `${jour} ${dateStr}`
+      return {
+        label: `${joursFrancais[date.getDay() === 0 ? 6 : date.getDay() - 1]} ${format(date, 'dd/MM')}`,
+        date,
+      }
     })
-    setJours(joursFormatted)
+
+    setJours(joursFormatted.map(j => j.label))
+    setDates(joursFormatted.map(j => j.date))
   }, [])
+
+  const findInterventions = (date: Date, tranche: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return interventions
+      .filter((i) => i.date === dateStr && i.tranche_horaire === tranche)
+      .slice(0, 4)
+  }
 
   return (
     <div className="w-full overflow-auto rounded-xl border shadow-sm bg-white">
-      <div className="grid grid-cols-[100px_repeat(7,1fr)] min-w-[900px]">
-        {/* Header des jours */}
-        <div className="bg-neutral-100 p-3 font-bold text-sm border-b border-r sticky left-0 top-0 z-20">
-          Heures
-        </div>
+      <div className="grid grid-cols-[100px_repeat(7,1fr)] min-w-[1000px]">
+        {/* Entête des jours */}
+        <div className="bg-neutral-100 p-3 font-bold text-sm border-b border-r sticky left-0 top-0 z-20">Heures</div>
         {jours.map((jour, i) => (
-          <div
-            key={`jour-${i}`}
-            className="bg-neutral-100 p-3 text-center font-semibold text-sm border-b border-r sticky top-0 z-10"
-          >
+          <div key={`jour-${i}`} className="bg-neutral-100 p-3 text-center font-semibold text-sm border-b border-r sticky top-0 z-10">
             {jour}
           </div>
         ))}
 
-        {/* Grille horaires */}
-        {heures.map((heure, rowIndex) => (
+        {/* Grille */}
+        {tranches.map((tranche, rowIndex) => (
           <div key={`row-${rowIndex}`} className="contents">
-            {/* Colonne heures (fixe à gauche) */}
             <div className="p-2 text-sm font-medium text-right border-r border-b sticky left-0 z-10 bg-white">
-              {heure}
+              {heuresAffichage[rowIndex]}
             </div>
+            {dates.map((date, colIndex) => {
+              const items = findInterventions(date, tranche)
+              return (
+                <div
+                  key={`cell-${rowIndex}-${colIndex}`}
+                  className="h-[100px] border-b border-r relative group cursor-pointer transition-all duration-150 hover:bg-blue-50 p-1 space-y-1"
+                >
+                  {items.map((item, idx) => {
+                    const statut = item.statut
+                    const bg =
+                      statut === 'terminée'
+                        ? 'bg-green-500'
+                        : statut === 'en attente'
+                        ? 'bg-yellow-400'
+                        : 'bg-red-500'
 
-            {/* Cellules horaires */}
-            {jours.map((_, colIndex) => (
-              <div
-                key={`cell-${rowIndex}-${colIndex}`}
-                className={clsx(
-                  "h-[60px] border-b border-r relative group cursor-pointer transition-all duration-150",
-                  "hover:bg-blue-50"
-                )}
-              >
-                {/* Future intervention */}
-                {/* <div className="absolute inset-1 rounded bg-blue-100 text-xs p-1 overflow-hidden">RDV</div> */}
-              </div>
-            ))}
+                    return (
+                      <div
+                        key={item.id + '-' + idx}
+                        className={clsx(
+                          bg,
+                          "text-white text-xs rounded px-1 py-0.5 truncate"
+                        )}
+                        title={item.type}
+                      >
+                        {item.technicien_nom || '❓'} - {item.client_nom || '❓'}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
         ))}
       </div>
