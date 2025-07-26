@@ -1,9 +1,8 @@
-// /app/intervention/[id]/page.tsx
 'use client'
+
 import { useParams } from 'next/navigation'
-import { useInterventionById } from '../../useInterventionById'
-import FicheIntervention from '../../FicheIntervention'
-'
+import { useInterventionById } from '@/app/dashboard/calendrier/useInterventionById'
+import FicheIntervention from '@/app/dashboard/calendrier/FicheIntervention'
 
 export default function PageIntervention() {
   const params = useParams()
