@@ -130,7 +130,7 @@ export default function CalendrierAdminProV2() {
                       return (
                         <div
                           key={item.id + '-' + idx}
-                          onClick={() => router.push(`/intervention/${item.id}`)}
+                          onClick={() => router.push(`/interventions/${item.id}`)}
                           className={clsx(
                             bg,
                             'cursor-pointer text-white text-xs rounded-md px-2 py-1 truncate shadow-sm hover:scale-[1.02] transition-all duration-200'

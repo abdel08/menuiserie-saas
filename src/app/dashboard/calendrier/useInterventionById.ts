@@ -4,10 +4,10 @@ import { supabase } from '../../../../lib/supabase'
 type Intervention = {
   id: string
   statut: string
-  client: {
+  clients: {
     nom: string
   }
-  technicien: {
+  users: {
     username: string
   }
 }
@@ -33,10 +33,10 @@ export function useInterventionById(id: string): UseInterventionResult {
         .select(`
           id,
           statut,
-          client (
+          clients (
             nom
           ),
-          technicien (
+          users (
             username
           )
         `)
@@ -47,11 +47,10 @@ export function useInterventionById(id: string): UseInterventionResult {
         setError(error)
         setIntervention(null)
       } else {
-        // ⚠️ Si jamais client ou technicien est un tableau (parfois supabase le fait)
         const cleanData = {
           ...data,
-          client: Array.isArray(data.client) ? data.client[0] : data.client,
-          technicien: Array.isArray(data.technicien) ? data.technicien[0] : data.technicien,
+          clients: Array.isArray(data.clients) ? data.clients[0] : data.clients,
+          users: Array.isArray(data.users) ? data.users[0] : data.users,
         }
 
         setIntervention(cleanData as Intervention)
