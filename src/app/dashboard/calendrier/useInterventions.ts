@@ -34,13 +34,15 @@ export function useInterventions() {
 
       const mapped = data.map((item: any) => ({
         id: item.id,
-        date: item.date,
-        tranche_horaire: item.tranche_horaire, // ex: "08:00-10:00"
-        type: item.type,
-        statut: item.statut,
-        technicien_id: item.technicien_id,
-        client_nom: item.client?.nom || '',
-        technicien_nom: item.technicien?.username || '',
+        title: `${item.client?.nom ?? 'Client'} - ${item.technicien?.username ?? 'Tech'}`,
+        fullData: {
+          date: item.date,
+          tranche_horaire: item.tranche_horaire,
+          type: item.type,
+          statut: item.statut,
+          client: item.client,
+          technicien: item.technicien,
+        },
       }))
 
       setEvents(mapped)
@@ -50,8 +52,8 @@ export function useInterventions() {
   }, [])
 
   const filteredEvents = events.filter((item) => {
-    const matchType = filters.type === '' || item.type === filters.type
-    const matchTech = filters.technicien === '' || item.technicien_id === filters.technicien
+    const matchType = filters.type === '' || item.fullData?.type === filters.type
+    const matchTech = filters.technicien === '' || item.fullData?.technicien?.id === filters.technicien
     return matchType && matchTech
   })
 
